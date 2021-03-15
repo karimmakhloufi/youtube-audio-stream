@@ -1,45 +1,53 @@
 #!/usr/bin/env node
-const ytdl = require('ytdl-core')
-const FFmpeg = require('fluent-ffmpeg')
-const { PassThrough } = require('stream')
-const fs = require('fs')
+const ytdl = require("ytdl-core");
+const FFmpeg = require("fluent-ffmpeg");
+const { PassThrough } = require("stream");
+const fs = require("fs");
 
 if (!module.parent) {
-  const youtubeUrl = process.argv.slice(2)[0]
-  if (!youtubeUrl) throw new TypeError('youtube url not specified')
-  streamify(youtubeUrl).pipe(process.stdout)
+  const youtubeUrl = process.argv.slice(2)[0];
+  if (!youtubeUrl) throw new TypeError("youtube url not specified");
+  streamify(youtubeUrl).pipe(process.stdout);
 } else {
-  module.exports = streamify
+  module.exports = streamify;
 }
 
-function streamify (uri, opt) {
+function streamify(params, opt) {
+  console.log("params", params);
   opt = {
     ...opt,
-    videoFormat: 'mp4',
-    quality: 'lowest',
-    audioFormat: 'mp3',
-    filter (format) {
-      return format.container === opt.videoFormat && format.audioBitrate
-    }
-  }
+    videoFormat: "mp4",
+    quality: "lowest",
+    audioFormat: "mp3",
+    filter(format) {
+      return format.container === opt.videoFormat && format.audioBitrate;
+    },
+  };
 
-  const video = ytdl(uri, opt)
-  const { file, audioFormat } = opt
-  const stream = file ? fs.createWriteStream(file) : new PassThrough()
-  const ffmpeg = new FFmpeg(video)
+  const video = ytdl("https://www.youtube.com/watch?v=" + params.id, opt);
+  const { file, audioFormat } = opt;
+  const stream = file ? fs.createWriteStream(file) : new PassThrough();
+  const ffmpeg = new FFmpeg(video);
 
   process.nextTick(() => {
-    const output = ffmpeg.format(audioFormat).pipe(stream)
+    setTimeout(() => {
+      ffmpeg.on("progress", (data) => {
+        // console.log(data);
+        params.progress[params.id] = data.timemark;
+      });
 
-    ffmpeg.on('error', error => stream.emit('error', error))
-    output.on('error', error => {
-      video.end()
-      stream.emit('error', error)
-    })
-  })
+      ffmpeg.on("error", (error) => stream.emit("error", error));
 
-  stream.video = video
-  stream.ffmpeg = ffmpeg
+      const output = ffmpeg.format(audioFormat).pipe(stream);
+      output.on("error", (error) => {
+        video.end();
+        stream.emit("error", error);
+      });
+    });
+  });
 
-  return stream
+  stream.video = video;
+  stream.ffmpeg = ffmpeg;
+
+  return stream;
 }
