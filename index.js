@@ -4,13 +4,7 @@ const FFmpeg = require("fluent-ffmpeg");
 const { PassThrough } = require("stream");
 const fs = require("fs");
 
-if (!module.parent) {
-  const youtubeUrl = process.argv.slice(2)[0];
-  if (!youtubeUrl) throw new TypeError("youtube url not specified");
-  streamify(youtubeUrl).pipe(process.stdout);
-} else {
-  module.exports = streamify;
-}
+module.exports = streamify;
 
 function streamify(params, opt) {
   console.log("params", params);
